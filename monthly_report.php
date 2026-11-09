@@ -1,0 +1,196 @@
+<?php
+include('db_connect.php');
+include('header.php');
+checkAuth();
+
+// 1. ตั้งค่า Timezone และรับค่าเดือน/ปี
+date_default_timezone_set('Asia/Bangkok'); 
+$selected_month = isset($_GET['month']) ? $_GET['month'] : date('m');
+$selected_year = isset($_GET['year']) ? $_GET['year'] : date('Y');
+
+$months_th = ["","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+
+// 2. SQL Query: ดึงสถานะคลัง (ปัจจุบัน) และยอดยืม (เฉพาะเดือนที่เลือก)
+$report_sql = "
+    SELECT 
+        e.eq_name, 
+        COUNT(e.eq_id) as total_inventory,
+        SUM(CASE WHEN e.available_qty = 1 AND e.broken_qty = 0 THEN 1 ELSE 0 END) as total_ready,
+        SUM(CASE WHEN e.broken_qty = 1 THEN 1 ELSE 0 END) as total_broken,
+        SUM(CASE WHEN e.available_qty = 0 AND e.broken_qty = 0 THEN 1 ELSE 0 END) as total_in_use,
+        (SELECT COUNT(t.loan_id) 
+         FROM loan_transactions t 
+         WHERE t.eq_id IN (SELECT eq_id FROM equipment WHERE eq_name = e.eq_name) 
+         AND MONTH(t.loan_date) = ? AND YEAR(t.loan_date) = ?) as current_month_loans
+    FROM equipment e
+    WHERE e.is_active = 1
+    GROUP BY e.eq_name
+    ORDER BY total_inventory DESC";
+
+$stmt = $conn->prepare($report_sql);
+$stmt->bind_param("ss", $selected_month, $selected_year);
+$stmt->execute();
+$result = $stmt->get_result();
+?>
+
+<style>
+    /* การแสดงผลบนหน้าจอปกติ */
+    .logo-print { width: 50px; margin-bottom: 5px; }
+    .signature-section { display: none; } 
+
+    /* การตั้งค่าสำหรับการพิมพ์ให้พอดี 1 หน้า A4 แนวนอน */
+    @media print {
+        @page { 
+            size: A4 landscape; 
+            margin: 0.8cm 1cm; /* เว้นขอบให้น้อยลงเพื่อประหยัดพื้นที่ */
+        }
+
+        body { 
+            background-color: #fff !important; 
+            font-size: 12pt !important; 
+            color: #000 !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ซ่อนส่วนประกอบเว็บที่ไม่เกี่ยวข้อง */
+        .navbar, .sidebar, .d-print-none, footer, .btn, .card-header, .navbar-toggler { 
+            display: none !important; 
+        }
+
+        /* ปรับ Container ให้กว้างเต็มหน้ากระดาษ */
+        .container-fluid, .card, .card-body { 
+            width: 100% !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
+            border: none !important;
+        }
+
+        /* จัดการตารางให้กระชับและคมชัด */
+        .table-print { 
+            width: 100% !important; 
+            border: 1px solid #000 !important;
+            margin-top: 5px;
+        }
+
+        .table-bordered th, .table-bordered td { 
+            border: 1px solid #000 !important; 
+            padding: 3px 4px !important; 
+            line-height: 1.1 !important;
+        }
+
+        .table thead th { 
+            background-color: #f2f2f2 !important; 
+            color: #000 !important; 
+            -webkit-print-color-adjust: exact; 
+        }
+
+        /* ส่วนลงนามแสดงเฉพาะตอนพิมพ์และไม่แยกหน้า */
+        .signature-section { 
+            display: flex !important; 
+            margin-top: 30px !important;
+            page-break-inside: avoid; 
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="container-fluid mt-3">
+    <div class="card shadow mb-4 d-print-none">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-calendar-alt"></i> รายงานสรุปประจำเดือน</h6>
+            <form method="GET" class="form-inline">
+                <select name="month" class="form-control form-control-sm mr-2 shadow-sm">
+                    <?php
+                    for($i=1; $i<=12; $i++) {
+                        $m_val = sprintf("%02d", $i);
+                        echo "<option value='$m_val' ".($m_val == $selected_month ? "selected" : "").">".$months_th[$i]."</option>";
+                    }
+                    ?>
+                </select>
+                <select name="year" class="form-control form-control-sm mr-2 shadow-sm">
+                    <?php
+                    $curr_y = date('Y');
+                    for($y=$curr_y; $y>=$curr_y-5; $y--) {
+                        echo "<option value='$y' ".($y == $selected_year ? "selected" : "").">".($y+543)."</option>";
+                    }
+                    ?>
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm shadow-sm mr-2">เรียกดู</button>
+                <button onclick="window.print();" class="btn btn-info btn-sm shadow-sm"><i class="fas fa-print"></i> พิมพ์รายงาน</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="print-area">
+        <div class="text-center mb-4">
+            <img src="images/logo2.png" class="logo-print">
+            <h4 class="font-weight-bold mb-1">สรุปสถานะคลังและสถิติการยืมอุปกรณ์รายเดือน</h4>
+            <p class="h6 mb-0">โรงพยาบาลทรายมูล จังหวัดยโสธร</p>
+            <p class="font-weight-bold text-primary mt-1">ประจำเดือน <?= $months_th[(int)$selected_month] ?> พ.ศ. <?= $selected_year + 543 ?></p>
+        </div>
+
+        <table class="table table-bordered text-center table-print">
+            <thead class="bg-light small">
+                <tr>
+                    <th rowspan="2" class="align-middle">ประเภทอุปกรณ์</th>
+                    <th rowspan="2" class="align-middle">คลังทั้งหมด</th>
+                    <th colspan="3">สถานะปัจจุบัน (ณ วันที่พิมพ์)</th>
+                    <th rowspan="2" class="align-middle" style="background-color: #e3f2fd !important;">ยอดยืมในเดือนนี้ (ครั้ง)</th>
+                </tr>
+                <tr>
+                    <th>พร้อมใช้</th>
+                    <th>ยืม</th>
+                    <th>ชำรุด</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $t_inv = 0; $t_ready = 0; $t_use = 0; $t_broken = 0; $t_loan = 0;
+                while($row = $result->fetch_assoc()): 
+                    $t_inv += $row['total_inventory'];
+                    $t_ready += $row['total_ready'];
+                    $t_use += $row['total_in_use'];
+                    $t_broken += $row['total_broken'];
+                    $t_loan += $row['current_month_loans'];
+                ?>
+                <tr>
+                    <td class="text-left font-weight-bold"><?= htmlspecialchars($row['eq_name']) ?></td>
+                    <td><?= number_format($row['total_inventory']) ?></td>
+                    <td class="text-success"><?= number_format($row['total_ready']) ?></td>
+                    <td class="text-warning"><?= number_format($row['total_in_use']) ?></td>
+                    <td class="text-danger"><?= number_format($row['total_broken']) ?></td>
+                    <td class="font-weight-bold text-primary bg-light"><?= number_format($row['current_month_loans']) ?></td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+            <tfoot class="font-weight-bold bg-light">
+                <tr>
+                    <td>รวมยอดสะสมทั้งสิ้น</td>
+                    <td><?= number_format($t_inv) ?></td>
+                    <td><?= number_format($t_ready) ?></td>
+                    <td><?= number_format($t_use) ?></td>
+                    <td><?= number_format($t_broken) ?></td>
+                    <td><?= number_format($t_loan) ?></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="row signature-section">
+            <div class="col-6 text-center">
+                <p>ลงชื่อ......................................................ผู้รายงาน</p>
+                <p>(......................................................)</p>
+                <p>ตำแหน่ง......................................................</p>
+                <p class="small">วันที่........./........../..........</p>
+            </div>
+            <div class="col-6 text-center">
+                <p>ลงชื่อ......................................................ผู้ตรวจสอบ</p>
+                <p>(......................................................)</p>
+                <p>ตำแหน่ง......................................................</p>
+                <p class="small">วันที่........./........../..........</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include('footer.php'); ?>

@@ -1,0 +1,84 @@
+/* style.css */
+
+
+/* style.css (ส่วนเพิ่มเติมสำหรับ Image Banner) */
+
+#image-banner {
+    /* กำหนดรูปภาพพื้นหลัง */
+    background-image: url('images/banner.png'); /* เปลี่ยนชื่อไฟล์ตามรูปที่คุณต้องการใช้ */
+    background-size: cover; /* ให้รูปภาพเต็มพื้นที่ */
+    background-position: center; /* จัดตำแหน่งรูปภาพให้อยู่กึ่งกลาง */
+    height: 10px; /* กำหนดความสูงของ Banner */
+    display: flex; /* จัดเรียงข้อความ */
+    align-items: center; /* จัดข้อความให้อยู่กึ่งกลางในแนวตั้ง */
+    position: relative; /* เพื่อใช้สำหรับ Overlay */
+}
+
+
+
+/* ทำให้ข้อความอยู่เหนือ Overlay */
+#image-banner > .container {
+    z-index: 2;
+}
+
+
+/* ... โค้ด CSS เก่า ... */
+
+/* ปรับสี Banner หลัก */
+.bg-primary {
+    background-color: #007bff !important; /* สีน้ำเงินมาตรฐาน Bootstrap */
+}
+
+/* เพิ่มการเน้นเมนูที่ใช้งานอยู่ (Active Menu) */
+.navbar-nav .nav-link.active {
+    border-bottom: 3px solid #007bff;
+    font-weight: bold;
+    color: #007bff !important;
+}
+
+/* ปรับสไตล์ card สำหรับ Dashboard ให้เด่นขึ้น */
+/* CSS สำหรับ Hover Effect: Slide Up */
+
+.card {
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out; 
+}
+
+.card:hover {
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); 
+}
+
+
+
+/* ปรับฟุตเตอร์ */
+footer {
+    border-top: 1px solid #dee2e6;
+    padding: 15px 0;
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+/* style.css (ส่วนเพิ่มเติมสำหรับ Sticky Footer) */
+
+html {
+    height: 100%; /* สำคัญมาก: ให้ html สูงเต็มจอ */
+}
+
+body {
+    display: flex; /* ใช้ Flexbox ใน body */
+    flex-direction: column; /* จัดเรียงองค์ประกอบในแนวตั้ง */
+    min-height: 100vh; /* ความสูงขั้นต่ำของ body เท่ากับความสูงของ viewport */
+}
+
+#wrapper {
+    flex: 1 0 auto; /* ทำให้ wrapper ขยายเพื่อเติมเต็มพื้นที่ที่เหลือทั้งหมด */
+}
+
+.footer {
+    flex-shrink: 0; /* ป้องกันไม่ให้ footer หดตัว */
+    width: 100%;
+    border-top: 1px solid #dee2e6; /* เพิ่มเส้นแบ่ง */
+    box-shadow: 0 -0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+}
+
+/* ... (โค้ด CSS เดิม) ... */
